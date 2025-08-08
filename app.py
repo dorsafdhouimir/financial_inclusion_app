@@ -1,40 +1,57 @@
 import streamlit as st
-import pandas as pd
 import joblib
+import pandas as pd
 
-model = joblib.load('model_financial_inclusion.pkl')
+model = joblib.load('model.pkl')
 
-st.title("Prédiction d'accès à un compte bancaire")
+st.title("Prédiction d'Inclusion Financière en Afrique")
 
-age = st.number_input("Âge du répondant", min_value=18, max_value=100, value=30)
-household_size = st.number_input("Taille du foyer", min_value=1, max_value=20, value=3)
-cellphone_access = st.selectbox("Accès à un téléphone portable", [0, 1])
+with st.form("formulaire_donnees"):
+    st.header("Entrez les informations personnelles")
 
-gender = st.selectbox("Genre", ['Male', 'Female'])
+    country = st.selectbox("Pays", ["Kenya", "Rwanda", "Tanzania", "Uganda"])
+    year = st.number_input("Année", min_value=2010, max_value=2025, value=2023)
+    location_type = st.selectbox("Type de localisation", ["Urban", "Rural"])
+    cellphone_access = st.selectbox("Accès au téléphone portable", ["Yes", "No"])
+    household_size = st.number_input("Taille du ménage", min_value=1, max_value=20, value=3)
+    age_of_respondent = st.number_input("Âge du répondant", min_value=18, max_value=100, value=30)
+    gender_of_respondent = st.selectbox("Genre du répondant", ["Male", "Female"])
+    relationship_with_head = st.selectbox("Relation avec le chef de ménage", ["Head of Household", "Spouse", "Child", "Other"])
+    marital_status = st.selectbox("État civil", ["Married", "Single", "Divorced", "Widowed", "Other"])
+    education_level = st.selectbox("Niveau d'éducation", ["No education", "Primary", "Secondary", "Tertiary"])
+    job_type = st.selectbox("Type d'emploi", ["Unemployed", "Self employed", "Government", "Private", "Other"])
 
+    submitted = st.form_submit_button("Prédire")
 
-input_dict = {
-    'age_of_respondent': age,
-    'household_size': household_size,
-    'cellphone_access': cellphone_access,
-    'gender_Male': 1 if gender == 'Male' else 0,
-    
-}
+if submitted:
 
-input_df = pd.DataFrame([input_dict])
+    input_dict = {
+        'country': [country],
+        'year': [year],
+        'location_type': [location_type],
+        'cellphone_access': [cellphone_access],
+        'household_size': [household_size],
+        'age_of_respondent': [age_of_respondent],
+        'gender_of_respondent': [gender_of_respondent],
+        'relationship_with_head': [relationship_with_head],
+        'marital_status': [marital_status],
+        'education_level': [education_level],
+        'job_type': [job_type]
+    }
+    input_df = pd.DataFrame(input_dict)
 
-for col in model.feature_names_in_:
-    if col not in input_df.columns:
-        input_df[col] = 0
+    input_encoded = pd.get_dummies(input_df, drop_first=True)
 
+    model_features = model.feature_names_in_ 
+    for col in model_features:
+        if col not in input_encoded.columns:
+            input_encoded[col] = 0
 
-input_df = input_df[model.feature_names_in_]
+    input_encoded = input_encoded[model_features]
 
-if st.button("Prédire"):
-    prediction = model.predict(input_df)[0]
-    proba = model.predict_proba(input_df)[0][1]
+    prediction = model.predict(input_encoded)
 
-    if prediction == 1:
-        st.success(f"La personne est susceptible d'avoir un compte bancaire.\nProbabilité : {proba:.2f}")
+    if prediction[0] == 1:
+        st.success("Le modèle prédit que cette personne a un compte bancaire.")
     else:
-        st.warning(f"La personne est moins susceptible d'avoir un compte bancaire.\nProbabilité : {proba:.2f}")
+        st.warning("Le modèle prédit que cette personne n'a pas de compte bancaire.")
